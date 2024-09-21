@@ -1,0 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Config files
+*.ini
+
+# Virtual environments
+venv/
+env/
+
+# MacOS files
+.DS_Store
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

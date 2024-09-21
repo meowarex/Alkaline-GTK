@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=KonqPopupMenu/Plugin,application/octet-stream
+MimeType=all/allfiles;
+Actions=Alkaline
+
+[Desktop Action Alkaline]
+Name=Convert with Alkaline...
+Icon=alkaline
+Exec=/usr/local/bin/alkaline "%u"
