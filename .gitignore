@@ -3,17 +3,158 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Config files
-*.ini
+# C extensions
+*.so
 
-# Virtual environments
-venv/
-env/
-
-# MacOS files
-.DS_Store
-
-# Build artifacts
+# Distribution / packaging
+.Python
 build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
 *.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+# Usually these files are written by a python script from a template
+# before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject/
+
+# mkdocs documentation
+/site/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# Flatpak build artifacts
+.flatpak-builder/
+build-dir/
+repo/
+alkaline-build/
+
+# AppImage build artifacts
+.Alkaline.AppDir/
+*.AppImage
+
+# Distribution directory
+dist/
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+
+# Backup files
+*~
+*.bak
+*.swp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Alkaline.AppDir/.DirIcon
+Alkaline.AppDir/AppRun
+Alkaline.AppDir/com.atomix.Alkaline.desktop
+Alkaline.AppDir/com.atomix.Alkaline.png
+Alkaline.AppDir/LICENSE
+Alkaline.AppDir/usr/bin/__init__.py
+Alkaline.AppDir/usr/bin/alkaline_app.py
+Alkaline.AppDir/usr/bin/cloudconvert_api.py
+Alkaline.AppDir/usr/bin/config_manager.py
+Alkaline.AppDir/usr/bin/ui_components.py
+Alkaline.AppDir/usr/bin/utils.py
+Alkaline.AppDir/usr/share/applications/com.atomix.Alkaline.desktop
+Alkaline.AppDir/usr/share/icons/hicolor/48x48/apps/com.atomix.Alkaline.png

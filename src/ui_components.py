@@ -1,168 +1,97 @@
-# src/ui_components.py
+# ui_components.py
 
-import threading
-import time
-import os
-from gi.repository import Gtk, GLib
+import gi
+gi.require_version('Gtk', '4.0')
+from gi.repository import Gtk
 
-class UIComponents:
-    def __init__(self, parent):
-        self.parent = parent
-        self.selected_format = None
+from utils import show_message_dialog
 
-    def build_header_bar(self):
-        header = Gtk.HeaderBar(title="Alkaline")
-        header.set_show_close_button(True)
-        self.parent.set_titlebar(header)
+# Global variable to store the selected file path
+selected_file_path = None
 
-        # Key Icon Button
-        key_icon = Gtk.Image.new_from_icon_name("dialog-password", Gtk.IconSize.BUTTON)
-        key_button = Gtk.Button()
-        key_button.add(key_icon)
-        key_button.connect("clicked", self.on_change_api_key_clicked)
-        header.pack_end(key_button)
+def create_main_ui(app):
+    # Main container
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+    box.set_margin_top(10)
+    box.set_margin_bottom(10)
+    box.set_margin_start(10)
+    box.set_margin_end(10)
 
-    def build_main_layout(self):
-        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        self.parent.add(hbox)
+    # API Key Entry
+    api_key_entry = Gtk.Entry()
+    api_key_entry.set_placeholder_text("Enter your API key")
+    api_key_entry.set_hexpand(True)
+    api_key_entry.set_text(app.config_manager.get_api_key())
 
-        # Left Pane - File Picker
-        vbox_left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        hbox.pack_start(vbox_left, False, False, 0)
+    # Save Button
+    save_button = Gtk.Button(label="Save API Key")
+    save_button.connect("clicked", on_save_button_clicked, app, api_key_entry)
 
-        self.file_picker_button = Gtk.Button(label="Select Files")
-        self.file_picker_button.connect("clicked", self.on_file_picker_clicked)
-        vbox_left.pack_start(self.file_picker_button, False, False, 0)
+    # File Selection Button
+    file_select_button = Gtk.Button(label="Select a File")
+    file_select_button.set_hexpand(True)
+    file_select_button.connect("clicked", on_file_select_button_clicked, app)
 
-        # File List
-        self.file_list_store = Gtk.ListStore(str)
-        self.file_tree_view = Gtk.TreeView(model=self.file_list_store)
-        renderer = Gtk.CellRendererText()
-        column = Gtk.TreeViewColumn("Selected Files", renderer, text=0)
-        self.file_tree_view.append_column(column)
-        vbox_left.pack_start(self.file_tree_view, True, True, 0)
+    # Output Format Entry
+    output_format_entry = Gtk.Entry()
+    output_format_entry.set_placeholder_text("Enter output format (e.g., pdf)")
+    output_format_entry.set_hexpand(True)
 
-        # Right Pane - Conversion Options
-        vbox_right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        hbox.pack_start(vbox_right, True, True, 0)
+    # Convert Button
+    convert_button = Gtk.Button(label="Convert File")
+    convert_button.connect(
+        "clicked",
+        on_convert_button_clicked,
+        app,
+        output_format_entry,
+    )
 
-        # Dropdown Menu
-        self.format_combo = Gtk.ComboBoxText()
-        self.format_combo.connect("changed", self.on_format_selected)
-        vbox_right.pack_start(self.format_combo, False, False, 0)
+    # Add widgets to box
+    box.append(api_key_entry)
+    box.append(save_button)
+    box.append(file_select_button)
+    box.append(output_format_entry)
+    box.append(convert_button)
 
-        # Convert Button
-        self.convert_button = Gtk.Button(label="Convert")
-        self.convert_button.set_sensitive(False)
-        self.convert_button.connect("clicked", self.parent.on_convert_clicked)
-        vbox_right.pack_start(self.convert_button, False, False, 0)
+    # Create a scrolled window in case content overflows
+    scrolled_window = Gtk.ScrolledWindow()
+    scrolled_window.set_child(box)
+    scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
-        # Progress Bar
-        self.progress_bar = Gtk.ProgressBar()
-        self.progress_bar.set_visible(False)
-        vbox_right.pack_start(self.progress_bar, False, False, 0)
+    return scrolled_window
 
-        # Download Button
-        self.download_button = Gtk.Button(label="Download")
-        self.download_button.set_sensitive(False)
-        self.download_button.connect("clicked", self.parent.on_download_clicked)
-        self.download_button.set_visible(False)
-        vbox_right.pack_start(self.download_button, False, False, 0)
+def on_save_button_clicked(button, app, api_key_entry):
+    api_key = api_key_entry.get_text()
+    app.config_manager.set_api_key(api_key)
+    app.cloudconvert_api.set_api_key(api_key)
+    show_message_dialog(app, "API Key Saved", "Your API key has been saved.")
 
-    def on_change_api_key_clicked(self, button):
-        self.show_api_key_prompt(self.parent.on_api_key_entered)
+def on_file_select_button_clicked(button, app):
+    global selected_file_path
 
-    def show_api_key_prompt(self, callback):
-        dialog = Gtk.MessageDialog(parent=self.parent, flags=0, message_type=Gtk.MessageType.QUESTION,
-                                   buttons=Gtk.ButtonsType.OK_CANCEL, text="Enter CloudConvert API Key")
-        dialog.format_secondary_text("Please enter your CloudConvert API key to proceed.")
+    dialog = Gtk.FileChooserNative(
+        title="Select a File",
+        transient_for=app.get_active_window(),
+        action=Gtk.FileChooserAction.OPEN,
+    )
 
-        entry = Gtk.Entry()
-        entry.set_visibility(False)
-        entry.set_invisible_char('*')
-        entry.set_activates_default(True)
-        dialog.vbox.pack_end(entry, True, True, 0)
-        dialog.set_default_response(Gtk.ResponseType.OK)
-        dialog.show_all()
-
-        response = dialog.run()
-        if response == Gtk.ResponseType.OK:
-            key = entry.get_text().strip()
-            dialog.destroy()
-            callback(key)
-        else:
-            dialog.destroy()
-            self.parent.close()
-
-    def on_file_picker_clicked(self, button):
-        dialog = Gtk.FileChooserDialog(title="Select Files", parent=self.parent, action=Gtk.FileChooserAction.OPEN)
-        dialog.set_select_multiple(True)
-        dialog.add_buttons(
-            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-            Gtk.STOCK_OPEN, Gtk.ResponseType.OK
-        )
-        response = dialog.run()
-        if response == Gtk.ResponseType.OK:
-            file_paths = dialog.get_filenames()
-            self.parent.on_file_selected(file_paths)
-            self.update_file_list(file_paths)
+    def response_handler(dialog, response):
+        global selected_file_path
+        if response == Gtk.ResponseType.ACCEPT:
+            selected_file = dialog.get_file()
+            if selected_file:
+                selected_file_path = selected_file.get_path()
+                button.set_label(f"Selected: {selected_file.get_basename()}")
         dialog.destroy()
 
-    def update_file_list(self, file_paths):
-        self.file_list_store.clear()
-        for path in file_paths:
-            self.file_list_store.append([os.path.basename(path)])
+    dialog.connect("response", response_handler)
+    dialog.show()
 
-    def on_format_selected(self, combo):
-        format = combo.get_active_text()
-        if format:
-            self.parent.on_format_selected(format)
-
-    def populate_formats(self, formats):
-        self.format_combo.remove_all()
-        for fmt in formats:
-            self.format_combo.append_text(fmt)
-        if formats:
-            self.format_combo.set_active(0)
-
-    def enable_convert_button(self, enable):
-        self.convert_button.set_sensitive(enable)
-
-    def set_loading_state(self, loading):
-        self.progress_bar.set_visible(loading)
-        if loading:
-            self.progress_bar.set_fraction(0.0)
-            threading.Thread(target=self._update_progress_bar).start()
-        else:
-            self.progress_bar.set_fraction(0.0)
-
-    def _update_progress_bar(self):
-        while self.progress_bar.get_visible():
-            current = self.progress_bar.get_fraction()
-            new_value = (current + 0.01) % 1.0
-            GLib.idle_add(self.progress_bar.set_fraction, new_value)
-            time.sleep(0.1)
-
-    def show_download_button(self, show):
-        self.download_button.set_visible(show)
-        self.download_button.set_sensitive(show)
-
-    def show_error(self, message):
-        dialog = Gtk.MessageDialog(parent=self.parent, flags=0, message_type=Gtk.MessageType.ERROR,
-                                   buttons=Gtk.ButtonsType.OK, text="Error")
-        dialog.format_secondary_text(message)
-        dialog.run()
-        dialog.destroy()
-
-    def show_info(self, message):
-        dialog = Gtk.MessageDialog(parent=self.parent, flags=0, message_type=Gtk.MessageType.INFO,
-                                   buttons=Gtk.ButtonsType.OK, text="Success")
-        dialog.format_secondary_text(message)
-        dialog.run()
-        dialog.destroy()
-
-    def reset_ui(self):
-        self.file_list_store.clear()
-        self.format_combo.remove_all()
-        self.enable_convert_button(False)
-        self.show_download_button(False)
+def on_convert_button_clicked(button, app, output_format_entry):
+    global selected_file_path
+    output_format = output_format_entry.get_text().strip()
+    if selected_file_path and output_format:
+        app.cloudconvert_api.convert_file(selected_file_path, output_format)
+        show_message_dialog(app, "Conversion Started", "Your file is being converted.")
+    else:
+        show_message_dialog(app, "Missing Information", "Please select a file and specify the output format.")

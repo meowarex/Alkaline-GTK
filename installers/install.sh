@@ -1,37 +1,24 @@
 #!/bin/bash
 
-# Install Python dependencies
-pip3 install --user -r ../requirements.txt
-
-# Copy the Python script to /usr/local/bin/
-sudo cp ../src/alkaline_app.py /usr/local/bin/alkaline
-sudo chmod +x /usr/local/bin/alkaline
-
-# Copy the service menu file
-SERVICE_MENU_DIR="$HOME/.local/share/kservices5/ServiceMenus"
-mkdir -p "$SERVICE_MENU_DIR"
-cp ../service_menu/alkaline.desktop "$SERVICE_MENU_DIR/"
-
-# Copy icons if necessary
-ICON_DIR="$HOME/.local/share/icons/hicolor/48x48/apps"
-mkdir -p "$ICON_DIR"
-cp ../assets/icons/alkaline.png "$ICON_DIR/"
-
-# Update icon cache
-gtk-update-icon-cache "$HOME/.local/share/icons/hicolor"
-
-echo "Installation complete. Restart Dolphin to see the 'Convert with Alkaline...' option."
-#!/bin/bash
-
 # Exit immediately if a command exits with a non-zero status
 set -e
 
+# Get the absolute path to the directory containing this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Set the project root directory (assuming it's the parent of Installers/)
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Change to the project root directory
+cd "$PROJECT_ROOT"
+
 # Variables
 APP_NAME="Alkaline"
-APP_ID="com.example.Alkaline"
-BUILD_DIR="build-dir"
-DIST_DIR="dist"
-FLATPAK_YAML="$APP_ID.yaml"
+APP_ID="com.atomix.Alkaline"
+BUILD_DIR="$PROJECT_ROOT/build-dir"
+DIST_DIR="$PROJECT_ROOT/dist"
+FLATPAK_YAML="$PROJECT_ROOT/$APP_ID.yaml"
+GNOME_SDK_VERSION="47"
 
 # Create necessary directories
 mkdir -p "$BUILD_DIR"
@@ -43,34 +30,90 @@ echo "Starting the installation and build process for $APP_NAME..."
 
 echo "Installing necessary dependencies..."
 
-# Install Python dependencies
-pip3 install --user -r requirements.txt
+# Check if requirements.txt exists
+if [ -f "$PROJECT_ROOT/requirements.txt" ]; then
+    # Install Python dependencies from requirements.txt
+    pip3 install --user --break-system-packages -r "$PROJECT_ROOT/requirements.txt"
+else
+    echo "requirements.txt not found. Installing dependencies directly."
+    # Install Python dependencies directly
+    pip3 install --user --break-system-packages PyGObject requests
+fi
+
+# Function to detect package manager
+detect_package_manager() {
+    if command -v apt-get &> /dev/null; then
+        PKG_MANAGER="apt-get"
+    elif command -v dnf &> /dev/null; then
+        PKG_MANAGER="dnf"
+    elif command -v pacman &> /dev/null; then
+        PKG_MANAGER="pacman"
+    elif command -v zypper &> /dev/null; then
+        PKG_MANAGER="zypper"
+    else
+        echo "Could not detect package manager."
+        PKG_MANAGER="unknown"
+    fi
+}
 
 # Function to check if a command exists and install if missing
 check_and_install() {
     if ! command -v "$1" &> /dev/null; then
         echo "$1 not found."
-        read -p "Do you want to install $1? [Y/n]: " choice
-        case "$choice" in
-            [Nn]* )
-                echo "Skipping $1 installation."
-                ;;
-            * )
-                if [ "$(id -u)" -ne 0 ]; then
-                    SUDO='sudo'
-                fi
-                if [[ "$1" == "flatpak-builder" ]]; then
-                    echo "Installing $1..."
-                    $SUDO apt-get update
-                    $SUDO apt-get install -y flatpak-builder
-                else
+        if [ "$1" == "flatpak-builder" ]; then
+            read -p "Do you want to install $1? [Y/n]: " choice
+            case "$choice" in
+                [Nn]* )
+                    echo "Skipping $1 installation."
+                    ;;
+                * )
+                    if [ "$(id -u )" -ne 0 ]; then
+                        SUDO='sudo'
+                    fi
+                    detect_package_manager
+                    if [ "$PKG_MANAGER" == "unknown" ]; then
+                        echo "Please install $1 manually."
+                        exit 1
+                    fi
+                    echo "Installing $1 using $PKG_MANAGER..."
+                    case "$PKG_MANAGER" in
+                        apt-get)
+                            $SUDO apt-get update
+                            $SUDO apt-get install -y flatpak-builder
+                            ;;
+                        dnf)
+                            $SUDO dnf install -y flatpak-builder
+                            ;;
+                        pacman)
+                            $SUDO pacman -Sy --needed flatpak-builder
+                            ;;
+                        zypper)
+                            $SUDO zypper install -y flatpak-builder
+                            ;;
+                        *)
+                            echo "Package manager $PKG_MANAGER is not supported by this script."
+                            exit 1
+                            ;;
+                    esac
+                    ;;
+            esac
+        else
+            read -p "Do you want to install $1? [Y/n]: " choice
+            case "$choice" in
+                [Nn]* )
+                    echo "Skipping $1 installation."
+                    ;;
+                * )
+                    if [ "$(id -u )" -ne 0 ]; then
+                        SUDO='sudo'
+                    fi
                     echo "Installing $1..."
                     wget -O "$1" "$2"
                     chmod +x "$1"
                     $SUDO mv "$1" /usr/local/bin/
-                fi
-                ;;
-        esac
+                    ;;
+            esac
+        fi
     else
         echo "$1 is already installed."
     fi
@@ -85,6 +128,34 @@ check_and_install "appimagetool" "https://github.com/AppImage/AppImageKit/releas
 # Check and install linuxdeploy
 check_and_install "linuxdeploy" "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
 
+# Function to check and install Flatpak runtime
+check_and_install_flatpak_runtime() {
+    RUNTIME=$1
+    VERSION=$2
+    if ! flatpak info "$RUNTIME//$VERSION" &> /dev/null; then
+        echo "$RUNTIME version $VERSION not found."
+        read -p "Do you want to install $RUNTIME//$VERSION? [Y/n]: " choice
+        case "$choice" in
+            [Nn]* )
+                echo "Cannot proceed without installing $RUNTIME//$VERSION."
+                exit 1
+                ;;
+            * )
+                echo "Installing $RUNTIME//$VERSION..."
+                flatpak install -y flathub "$RUNTIME//$VERSION"
+                ;;
+        esac
+    else
+        echo "$RUNTIME version $VERSION is already installed."
+    fi
+}
+
+# Check and install GNOME SDK and Platform version 47
+echo "Checking for GNOME SDK and Platform version $GNOME_SDK_VERSION..."
+
+check_and_install_flatpak_runtime "org.gnome.Sdk" "$GNOME_SDK_VERSION"
+check_and_install_flatpak_runtime "org.gnome.Platform" "$GNOME_SDK_VERSION"
+
 # 2. Build the Flatpak package
 
 echo "Building the Flatpak package..."
@@ -96,7 +167,7 @@ if [ ! -f "$FLATPAK_YAML" ]; then
 fi
 
 # Clean previous build
-rm -rf "$BUILD_DIR"
+rm -rf "$BUILD_DIR" repo
 
 # Build and install locally for testing
 flatpak-builder --user --install --force-clean "$BUILD_DIR" "$FLATPAK_YAML"
@@ -110,35 +181,38 @@ flatpak build-bundle repo "$DIST_DIR/alkaline.flatpak" "$APP_ID"
 echo "Building the AppImage package..."
 
 # Clean previous AppDir
-rm -rf "$APP_NAME.AppDir"
+rm -rf "$PROJECT_ROOT/$APP_NAME.AppDir"
 
 # Create AppDir structure
-mkdir -p "$APP_NAME.AppDir/usr/bin"
-mkdir -p "$APP_NAME.AppDir/usr/share/icons/hicolor/48x48/apps"
-mkdir -p "$APP_NAME.AppDir/usr/share/applications"
+mkdir -p "$PROJECT_ROOT/$APP_NAME.AppDir/usr/bin"
+mkdir -p "$PROJECT_ROOT/$APP_NAME.AppDir/usr/share/icons/hicolor/48x48/apps"
+mkdir -p "$PROJECT_ROOT/$APP_NAME.AppDir/usr/share/applications"
 
 # Copy application files
-cp src/*.py "$APP_NAME.AppDir/usr/bin/"
-cp assets/icons/alkaline.png "$APP_NAME.AppDir/usr/share/icons/hicolor/48x48/apps/$APP_ID.png"
-cp data/$APP_ID.desktop "$APP_NAME.AppDir/usr/share/applications/"
+cp "$PROJECT_ROOT/src/"*.py "$PROJECT_ROOT/$APP_NAME.AppDir/usr/bin/"
+cp "$PROJECT_ROOT/assets/icons/alkaline.png" "$PROJECT_ROOT/$APP_NAME.AppDir/usr/share/icons/hicolor/48x48/apps/$APP_ID.png"
+cp "$PROJECT_ROOT/data/$APP_ID.desktop" "$PROJECT_ROOT/$APP_NAME.AppDir/usr/share/applications/"
+
+# Install Python dependencies into AppDir
+python3 -m pip install -r "$PROJECT_ROOT/requirements.txt" --target="$PROJECT_ROOT/$APP_NAME.AppDir/usr/bin/"
 
 # Create AppRun script
-cat > "$APP_NAME.AppDir/AppRun" <<EOL
+cat > "$PROJECT_ROOT/$APP_NAME.AppDir/AppRun" <<EOL
 #!/bin/bash
 HERE="\$(dirname "\$(readlink -f "\$0")")"
 export PYTHONPATH="\$HERE/usr/bin"
-exec python3 "\$HERE/usr/bin/alkaline_app.py" "\$@"
+exec alkaline "\$@"
 EOL
-chmod +x "$APP_NAME.AppDir/AppRun"
+chmod +x "$PROJECT_ROOT/$APP_NAME.AppDir/AppRun"
 
 # Copy license and other files
-cp LICENSE "$APP_NAME.AppDir/"
+cp "$PROJECT_ROOT/LICENSE" "$PROJECT_ROOT/$APP_NAME.AppDir/"
 
 # Use linuxdeploy to bundle dependencies and build AppImage
-linuxdeploy --appdir="$APP_NAME.AppDir" --output appimage
+ARCH=x86_64 linuxdeploy --appdir="$PROJECT_ROOT/$APP_NAME.AppDir" --output appimage
 
 # Move the AppImage to the dist directory
-mv "$APP_NAME"-*.AppImage "$DIST_DIR/"
+mv "$PROJECT_ROOT/$APP_NAME"-*.AppImage "$DIST_DIR/"
 
 echo "Build process completed. Packages are available in the $DIST_DIR directory."
 

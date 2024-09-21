@@ -1,27 +1,31 @@
-# src/config_manager.py
+# config_manager.py
 
-import configparser
-from pathlib import Path
+import json
+import os
+from gi.repository import GLib
 
 class ConfigManager:
     def __init__(self):
-        self.config_dir = Path.home() / '.config' / 'alkaline'
-        self.config_file = self.config_dir / 'config.ini'
-        self.config = configparser.ConfigParser()
-        self.api_key = self.load_api_key()
+        config_dir = os.path.join(GLib.get_user_config_dir(), "alkaline")
+        os.makedirs(config_dir, exist_ok=True)
+        self.config_file = os.path.join(config_dir, "config.json")
+        self.config = {}
+        self.load_config()
 
-    def load_api_key(self):
-        if self.config_file.exists():
-            self.config.read(self.config_file)
-            return self.config.get('API', 'key', fallback=None)
-        return None
+    def load_config(self):
+        if os.path.exists(self.config_file):
+            with open(self.config_file, "r") as f:
+                self.config = json.load(f)
+        else:
+            self.config = {"api_key": ""}
 
-    def save_api_key(self, key):
-        if not self.config_dir.exists():
-            self.config_dir.mkdir(parents=True)
-        if 'API' not in self.config.sections():
-            self.config.add_section('API')
-        self.config.set('API', 'key', key)
-        with open(self.config_file, 'w') as configfile:
-            self.config.write(configfile)
-        self.api_key = key
+    def save_config(self):
+        with open(self.config_file, "w") as f:
+            json.dump(self.config, f, indent=4)
+
+    def get_api_key(self):
+        return self.config.get("api_key", "")
+
+    def set_api_key(self, api_key):
+        self.config["api_key"] = api_key
+        self.save_config()
