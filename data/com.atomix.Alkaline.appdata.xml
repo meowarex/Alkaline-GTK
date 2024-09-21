@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop">
+  <id>com.example.Alkaline</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Alkaline File Converter</name>
+  <summary>Convert files using CloudConvert API</summary>
+  <description>
+    <p>Alkaline is a file converter application that allows users to convert files using the CloudConvert API.</p>
+  </description>
+</component>
