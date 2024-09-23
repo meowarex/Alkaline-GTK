@@ -1,13 +1,3 @@
-id: com.atomix.Alkaline
-runtime: org.gnome.Platform
-runtime-version: '47'
-sdk: org.gnome.Sdk
-command: alkaline
-finish-args:
-  - --share=network
-  - --filesystem=home
-  - --talk-name=org.freedesktop.Notifications
-
 modules:
   - name: alkaline
     buildsystem: simple
@@ -25,10 +15,10 @@ modules:
       - install src/*.py /app/lib/python3.12/site-packages/
       
       # Upgrade pip to the latest version
-      - pip install --upgrade pip
+      - python3 -m pip install --upgrade pip
       
       # Install Python dependencies directly from requirements.txt
-      - pip install -r requirements.txt --target=/app/lib/python3.12/site-packages/ --break-system-packages
+      - python3 -m pip install -r requirements.txt --target=/app/lib/python3.12/site-packages/
       
       # Install the application icon
       - install -m 644 assets/icons/alkaline.png /app/share/icons/hicolor/48x48/apps/com.atomix.Alkaline.png
