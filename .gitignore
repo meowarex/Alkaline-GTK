@@ -1,19 +1,50 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+# Ignore build output directories
+/bin/
+/obj/
+/AlkalineGTK.AppDir/
+/Batteries/
+/appimagetool*
 
-# Config files
-*.ini
+# Ignore all files and subdirectories in bin, obj, AlkalineGTK.AppDir, and appimagetool
+bin/**/*
+obj/**/*
+AlkalineGTK.AppDir/**/*
+appimagetool*
 
-# Virtual environments
-venv/
-env/
+# Ignore user-specific files
+*.user
+*.userosscache
+*.suo
+*.userprefs
 
-# MacOS files
+# Ignore Visual Studio files
+.vs/
+*.vspscc
+*.vssscc
+
+# Ignore build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Ignore NuGet packages
+*.nupkg
+# The packages folder can be ignored because of Package Restore
+**/[Pp]ackages/*
+# except build/, which is used as an MSBuild target.
+!**/[Pp]ackages/build/
+
+# Ignore other common files
+*.log
+*.tmp
+*.temp
 .DS_Store
-
-# Build artifacts
-build/
-dist/
-*.egg-info/
+Thumbs.db
