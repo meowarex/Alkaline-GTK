@@ -120,17 +120,36 @@ EOL
 
 chmod +x AlkalineGTK.AppDir/AppRun
 
+echo "Copying icon file..."
+
+# Copy icon file from Assets directory
+if [ -f Assets/alkalinegtk.png ]; then
+    cp Assets/alkalinegtk.png AlkalineGTK.AppDir/usr/share/icons/hicolor/256x256/apps/
+    echo -e "${GREEN}Icon file copied successfully!${NC}"
+else
+    echo -e "${RED}Icon file not found in Assets directory!${NC}"
+    exit 1
+fi
+
+echo "Verifying AppDir structure..."
+
+# List the contents of the AppDir structure for debugging
+ls -R AlkalineGTK.AppDir
+
 echo "Deleting old AppImage files..."
 
 # Delete old AppImage files
-rm -f AlkalineGTK*.AppImage
+rm -f Release/AlkalineGTK*.AppImage
 
 echo "Creating AppImage..."
 
+# Create Release directory if it doesn't exist
+mkdir -p Release
+
 # Create AppImage
-./Batteries/appimagetool-x86_64.AppImage AlkalineGTK.AppDir AlkalineGTK.AppImage
+./Batteries/appimagetool-x86_64.AppImage AlkalineGTK.AppDir Release/AlkalineGTK.AppImage
 
 echo -e "${GREEN}AppImage created successfully!${NC}"
-echo -e "${GREEN}You can find the AppImage at: $(pwd)/AlkalineGTK.AppImage${NC}"
+echo -e "${GREEN}You can find the AppImage at: $(pwd)/Release/AlkalineGTK.AppImage${NC}"
 
 echo -e "${GREEN}Installation process completed.${NC}"
