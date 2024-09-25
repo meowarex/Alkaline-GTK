@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using RestSharp;
 using Newtonsoft.Json.Linq;
+using System.Net;
 
 namespace AlkalineGTK.Utils
 {
     public class CloudConvertApi
     {
-        private readonly string _apiUrl = "https://api.cloudconvert.com/v2"; // CloudConvert API base URL
-        private readonly string _apiToken = Environment.GetEnvironmentVariable("CLOUDCONVERT_API_TOKEN"); // Securely retrieve your API token
+        private readonly string _apiUrl = "https://api.cloudconvert.com/v2";
+        private readonly string _apiToken;
 
         public CloudConvertApi()
         {
@@ -18,20 +19,22 @@ namespace AlkalineGTK.Utils
             {
                 throw new InvalidOperationException("CloudConvert API token is not set.");
             }
+            Console.WriteLine("CloudConvertApi initialized with API token.");
         }
 
-        /// <summary>
-        /// Retrieves supported output formats for the given input file.
-        /// </summary>
-        /// <param name="filePath">Path to the input file.</param>
-        /// <returns>List of supported output formats.</returns>
         public async Task<List<string>> GetSupportedFormatsAsync(string filePath)
         {
+            Console.WriteLine($"GetSupportedFormatsAsync called with filePath: {filePath}");
+
             var client = new RestClient(_apiUrl);
             var request = new RestRequest("formats", Method.Get);
             request.AddHeader("Authorization", $"Bearer {_apiToken}");
 
+            Console.WriteLine($"Sending GET request to {_apiUrl}/formats");
             var response = await client.ExecuteAsync(request);
+            Console.WriteLine($"Response status code: {response.StatusCode}");
+            Console.WriteLine($"Response content: {response.Content}");
+
             if (response.IsSuccessful)
             {
                 var json = JObject.Parse(response.Content);
@@ -39,27 +42,23 @@ namespace AlkalineGTK.Utils
 
                 foreach (var format in json["data"])
                 {
-                    // Assuming we want to list all possible output formats
                     formats.Add(format["output"]["format"].ToString());
                 }
 
+                Console.WriteLine($"Parsed formats: {string.Join(", ", formats)}");
                 return formats;
             }
             else
             {
+                Console.WriteLine($"API request failed with status {response.StatusCode}: {response.Content}");
                 throw new Exception($"API request failed with status {response.StatusCode}: {response.Content}");
             }
         }
 
-        /// <summary>
-        /// Converts a file using CloudConvert API.
-        /// </summary>
-        /// <param name="inputFilePath">Path to the input file.</param>
-        /// <param name="outputFilePath">Path where the converted file will be saved.</param>
-        /// <param name="targetFormat">Desired output format.</param>
-        /// <returns>Boolean indicating success or failure.</returns>
         public async Task<bool> ConvertFileAsync(string inputFilePath, string outputFilePath, string targetFormat)
         {
+            Console.WriteLine($"ConvertFileAsync called with inputFilePath: {inputFilePath}, outputFilePath: {outputFilePath}, targetFormat: {targetFormat}");
+
             var client = new RestClient(_apiUrl);
             var request = new RestRequest("jobs", Method.Post);
             request.AddHeader("Authorization", $"Bearer {_apiToken}");
@@ -85,9 +84,14 @@ namespace AlkalineGTK.Utils
                 }
             });
 
+            Console.WriteLine($"Sending POST request to {_apiUrl}/jobs");
             var response = await client.ExecuteAsync(request);
+            Console.WriteLine($"Response status code: {response.StatusCode}");
+            Console.WriteLine($"Response content: {response.Content}");
+
             if (!response.IsSuccessful)
             {
+                Console.WriteLine($"Failed to create conversion job: {response.StatusCode} - {response.Content}");
                 throw new Exception($"Failed to create conversion job: {response.StatusCode} - {response.Content}");
             }
 
@@ -96,18 +100,23 @@ namespace AlkalineGTK.Utils
             string uploadUrl = importTask["url"].ToString();
             string uploadToken = importTask["parameters"]["token"].ToString();
 
+            Console.WriteLine($"Upload URL: {uploadUrl}");
+            Console.WriteLine($"Upload token: {uploadToken}");
+
             // Upload the file
             var uploadClient = new RestClient(uploadUrl);
             var uploadRequest = new RestRequest(uploadUrl, Method.Post);
-            foreach (var file in System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(inputFilePath)))
-            {
-                uploadRequest.AddFile("file", inputFilePath);
-                break; // Only upload the selected file
-            }
+            uploadRequest.AddFile("file", inputFilePath);
+            uploadRequest.AddParameter("token", uploadToken);
 
+            Console.WriteLine($"Uploading file to {uploadUrl}");
             var uploadResponse = await uploadClient.ExecuteAsync(uploadRequest);
+            Console.WriteLine($"Upload response status code: {uploadResponse.StatusCode}");
+            Console.WriteLine($"Upload response content: {uploadResponse.Content}");
+
             if (!uploadResponse.IsSuccessful)
             {
+                Console.WriteLine($"Failed to upload file: {uploadResponse.StatusCode} - {uploadResponse.Content}");
                 throw new Exception($"Failed to upload file: {uploadResponse.StatusCode} - {uploadResponse.Content}");
             }
 
@@ -118,26 +127,34 @@ namespace AlkalineGTK.Utils
                 statusRequest.AddHeader("Authorization", $"Bearer {_apiToken}");
                 var statusResponse = await client.ExecuteAsync(statusRequest);
 
+                Console.WriteLine($"Job status response status code: {statusResponse.StatusCode}");
+                Console.WriteLine($"Job status response content: {statusResponse.Content}");
+
                 if (!statusResponse.IsSuccessful)
                 {
+                    Console.WriteLine($"Failed to get job status: {statusResponse.StatusCode} - {statusResponse.Content}");
                     throw new Exception($"Failed to get job status: {statusResponse.StatusCode} - {statusResponse.Content}");
                 }
 
                 var statusJob = JObject.Parse(statusResponse.Content);
                 string status = statusJob["data"]["status"].ToString();
+                Console.WriteLine($"Job status: {status}");
 
                 if (status == "finished")
                 {
                     // Download the converted file
                     var exportTask = statusJob["data"]["tasks"].First(t => t["name"].ToString() == "export");
                     var fileUrl = exportTask["result"]["files"][0]["url"].ToString();
+                    Console.WriteLine($"Downloading converted file from: {fileUrl}");
                     var fileResponse = await client.DownloadDataAsync(new RestRequest(fileUrl, Method.Get));
 
                     System.IO.File.WriteAllBytes(outputFilePath, fileResponse);
+                    Console.WriteLine($"File saved to: {outputFilePath}");
                     return true;
                 }
                 else if (status == "error")
                 {
+                    Console.WriteLine("Conversion job failed.");
                     throw new Exception("Conversion job failed.");
                 }
 

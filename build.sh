@@ -9,6 +9,9 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Delete the log file if it exists
+rm -f alkalinegtk_log.txt
+
 # Function to detect the package manager
 detect_package_manager() {
     if [ -x "$(command -v apt-get)" ]; then
@@ -199,5 +202,6 @@ echo -e "${YELLOW}Do you want to execute the AppImage now? (yes/no)${NC}"
 read -r response
 if [[ "$response" == "yes" ]]; then
     echo "Executing the AppImage with verbose output..."
-    ./Release/AlkalineGTK.AppImage --verbose
+    ./Release/AlkalineGTK.AppImage --verbose > >(tee -a alkalinegtk_log.txt) 2> >(tee -a alkalinegtk_log.txt >&2)
+    echo "Log file saved as alkalinegtk_log.txt"
 fi

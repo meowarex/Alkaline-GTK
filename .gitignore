@@ -11,11 +11,12 @@ obj/**/*
 AlkalineGTK.AppDir/**/*
 appimagetool*
 
-# Ignore user-specific files
+# Ignore user-specific files & Logs
 *.user
 *.userosscache
 *.suo
 *.userprefs
+/*log.txt
 
 # Ignore Visual Studio files
 .vs/

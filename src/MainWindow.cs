@@ -12,6 +12,7 @@ namespace AlkalineGTK
         private Button _convertButton;
         private Entry _outputDirectory;
         private CloudConvertApi _api;
+        private Label _statusLabel;
 
         public MainWindow() : base("AlkalineGTK - File Converter")
         {
@@ -63,6 +64,10 @@ namespace AlkalineGTK
             _convertButton = new Button("Convert");
             _convertButton.Clicked += OnConvertClicked;
             vbox.PackStart(_convertButton, false, false, 5);
+
+            // Add status label
+            _statusLabel = new Label("Ready");
+            vbox.PackStart(_statusLabel, false, false, 5);
         }
 
         private void AskForApiKey()
@@ -140,10 +145,23 @@ namespace AlkalineGTK
 
         private async void OnFileSelected(object sender, EventArgs e)
         {
-            string inputFile = _fileChooser.Filename;
-            if (!string.IsNullOrEmpty(inputFile))
+            try
             {
-                await LoadSupportedFormats(inputFile);
+                string inputFile = _fileChooser.Filename;
+                Console.WriteLine($"File selected: {inputFile}");
+                if (!string.IsNullOrEmpty(inputFile))
+                {
+                    await LoadSupportedFormats(inputFile);
+                }
+                else
+                {
+                    Console.WriteLine("No file selected.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in OnFileSelected: {ex}");
+                ShowMessage($"Error selecting file: {ex.Message}");
             }
         }
 
@@ -214,31 +232,80 @@ namespace AlkalineGTK
             {
                 if (_api == null)
                 {
-                    ShowMessage("API key not set. Please restart the application.");
+                    Console.WriteLine("API is null. Asking for API key.");
+                    ShowMessage("API key not set. Please set the API key.");
+                    AskForApiKey();
                     return;
                 }
 
+                Console.WriteLine("Loading supported formats...");
+                ShowMessage("Loading supported formats...");
                 var supportedFormats = await _api.GetSupportedFormatsAsync(inputFile);
-
-                _formatDropdown.RemoveAll();
-                _formatDropdown.AppendText("Select format");
-                foreach (var format in supportedFormats)
+                
+                if (supportedFormats == null)
                 {
-                    _formatDropdown.AppendText(format);
+                    Console.WriteLine("Supported formats is null");
+                    ShowMessage("Failed to retrieve supported formats.");
+                    return;
                 }
-                _formatDropdown.Active = 0;
+
+                Console.WriteLine($"Supported formats: {string.Join(", ", supportedFormats)}");
+
+                Application.Invoke((sender, args) =>
+                {
+                    try
+                    {
+                        _formatDropdown.RemoveAll();
+                        _formatDropdown.AppendText("Select format");
+                        foreach (var format in supportedFormats)
+                        {
+                            if (!string.IsNullOrWhiteSpace(format))
+                            {
+                                _formatDropdown.AppendText(format);
+                            }
+                            else
+                            {
+                                Console.WriteLine("Skipping empty or null format");
+                            }
+                        }
+                        _formatDropdown.Active = 0;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error updating format dropdown: {ex}");
+                    }
+                });
+
+                ShowMessage("Supported formats loaded.");
             }
             catch (Exception ex)
             {
-                ShowMessage($"Failed to load supported formats: {ex.Message}");
+                Console.WriteLine($"Error in LoadSupportedFormats: {ex}");
+                ShowMessage($"Failed to load supported formats. Error: {ex.Message}");
             }
         }
 
         private void ShowMessage(string message)
         {
-            var md = new MessageDialog(this, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok, message);
-            md.Run();
-            md.Destroy();
+            Console.WriteLine($"Status message: {message}");
+            Application.Invoke((sender, args) =>
+            {
+                try
+                {
+                    if (_statusLabel != null)
+                    {
+                        _statusLabel.Text = message;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Error: _statusLabel is null");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error updating status label: {ex.Message}");
+                }
+            });
         }
     }
 }
