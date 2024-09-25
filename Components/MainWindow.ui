@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkWindow" id="main_window">
+    <property name="title">AlkalineGTK - File Converter</property>
+    <child>
+      <object class="GtkBox" id="vbox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">10</property>
+        <property name="margin">10</property>
+        <child>
+          <object class="GtkFileChooserButton" id="file_chooser">
+            <property name="title">Select a file</property>
+            <property name="action">open</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox" id="hbox_dir">
+            <property name="orientation">horizontal</property>
+            <property name="spacing">5</property>
+            <child>
+              <object class="GtkLabel" id="lbl_dir">
+                <property name="label">Output Directory:</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkEntry" id="output_directory">
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="btn_browse">
+                <property name="label">Browse</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkComboBoxText" id="format_dropdown">
+            <items>
+              <item id="item1">Select format</item>
+            </items>
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton" id="btn_convert">
+            <property name="label">Convert</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>
