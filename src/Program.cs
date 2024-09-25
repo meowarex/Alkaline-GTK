@@ -6,24 +6,40 @@ namespace AlkalineGTK
 {
     public class Program
     {
+        private static string logPath = Path.Combine(Environment.CurrentDirectory, "alkalinegtk_log.txt");
+
         public static void Main(string[] args)
         {
-            // Set up console redirection to a file
-            string logPath = Path.Combine(Environment.CurrentDirectory, "alkalinegtk_log.txt");
-            using (StreamWriter writer = new StreamWriter(logPath, true))
+            try
             {
-                Console.SetOut(writer);
-                Console.SetError(writer);
-
-                Console.WriteLine($"Application started at {DateTime.Now}");
+                Log("Application started");
 
                 Application.Init();
-                var win = new MainWindow();
-                win.Show();
-                Application.Run();
+                Log("Gtk Application initialized");
 
-                Console.WriteLine($"Application ended at {DateTime.Now}");
+                var win = new MainWindow();
+                Log("MainWindow instance created");
+
+                win.Show();
+                Log("MainWindow shown");
+
+                Application.Run();
             }
+            catch (Exception ex)
+            {
+                Log($"Unhandled exception: {ex}");
+            }
+            finally
+            {
+                Log("Application ended");
+            }
+        }
+
+        public static void Log(string message)
+        {
+            string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            string logMessage = $"[{timestamp}] {message}";
+            File.AppendAllText(logPath, logMessage + Environment.NewLine);
         }
     }
 }

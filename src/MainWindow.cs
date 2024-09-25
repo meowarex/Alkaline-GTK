@@ -16,23 +16,29 @@ namespace AlkalineGTK
 
         public MainWindow() : base("AlkalineGTK - File Converter")
         {
+            Log("MainWindow constructor started");
             SetDefaultSize(500, 300);
             SetPosition(WindowPosition.Center);
             DeleteEvent += OnDeleteEvent;
 
+            Log("Initializing components");
             InitializeComponents();
             ShowAll();
 
             // Ask for API key on startup
             GLib.Idle.Add(() =>
             {
+                Log("Asking for API key");
                 AskForApiKey();
                 return false;
             });
+
+            Log("MainWindow constructor completed");
         }
 
         private void InitializeComponents()
         {
+            Log("InitializeComponents started");
             // File chooser
             _fileChooser = new FileChooserButton("Select a file", FileChooserAction.Open);
             _fileChooser.FileSet += OnFileSelected;
@@ -68,10 +74,13 @@ namespace AlkalineGTK
             // Add status label
             _statusLabel = new Label("Ready");
             vbox.PackStart(_statusLabel, false, false, 5);
+
+            Log("InitializeComponents completed");
         }
 
         private void AskForApiKey()
         {
+            Log("AskForApiKey method started");
             var dialog = new Dialog("Enter API Key", this, DialogFlags.Modal)
             {
                 BorderWidth = 10
@@ -98,11 +107,12 @@ namespace AlkalineGTK
                     string apiKey = entry.Text;
                     if (!string.IsNullOrWhiteSpace(apiKey))
                     {
+                        Log("Setting API key");
                         Environment.SetEnvironmentVariable("CLOUDCONVERT_API_TOKEN", apiKey);
                         try
                         {
                             _api = new CloudConvertApi();
-                            ShowMessage("API key set successfully!");
+                            ShowMessage("API key set successfully");
                         }
                         catch (Exception ex)
                         {
@@ -111,13 +121,13 @@ namespace AlkalineGTK
                     }
                     else
                     {
-                        ShowMessage("API key cannot be empty. Please try again.");
+                        ShowMessage("API key is empty, asking again");
                         AskForApiKey(); // Ask again if the key is empty
                     }
                 }
                 else
                 {
-                    ShowMessage("API key is required to use the application. The app will now close.");
+                    ShowMessage("API key not provided, closing application");
                     Application.Quit();
                 }
                 dialog.Destroy();
@@ -145,28 +155,30 @@ namespace AlkalineGTK
 
         private async void OnFileSelected(object sender, EventArgs e)
         {
+            Log("File selected");
             try
             {
                 string inputFile = _fileChooser.Filename;
-                Console.WriteLine($"File selected: {inputFile}");
+                Log($"File selected: {inputFile}");
                 if (!string.IsNullOrEmpty(inputFile))
                 {
+                    Log("Loading supported formats");
                     await LoadSupportedFormats(inputFile);
                 }
                 else
                 {
-                    Console.WriteLine("No file selected.");
+                    Log("No file selected");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in OnFileSelected: {ex}");
-                ShowMessage($"Error selecting file: {ex.Message}");
+                Log($"Error in OnFileSelected: {ex.Message}");
             }
         }
 
         private async void OnConvertClicked(object sender, EventArgs e)
         {
+            ShowMessage("Convert button clicked");
             string inputFile = _fileChooser.Filename;
             string outputDir = _outputDirectory.Text;
             string selectedFormat = _formatDropdown.ActiveText;
@@ -193,36 +205,36 @@ namespace AlkalineGTK
             {
                 if (_api == null)
                 {
-                    ShowMessage("API key not set. Please restart the application.");
+                    ShowMessage("API is not initialized");
                     return;
                 }
 
+                ShowMessage("Getting supported formats");
                 var supportedFormats = await _api.GetSupportedFormatsAsync(inputFile);
 
                 if (supportedFormats.Contains(selectedFormat, StringComparer.OrdinalIgnoreCase))
                 {
-                    // Implement the actual conversion logic here
-                    // For demonstration, we'll initiate a conversion job with CloudConvert
+                    ShowMessage("Starting file conversion");
                     string newFilePath = System.IO.Path.Combine(outputDir, $"{System.IO.Path.GetFileNameWithoutExtension(inputFile)}.{selectedFormat}");
                     bool success = await _api.ConvertFileAsync(inputFile, newFilePath, selectedFormat);
 
                     if (success)
                     {
-                        ShowMessage($"File converted and saved to {newFilePath}");
+                        ShowMessage($"File converted successfully: {newFilePath}");
                     }
                     else
                     {
-                        ShowMessage("File conversion failed. Please check the logs for more details.");
+                        ShowMessage("File conversion failed");
                     }
                 }
                 else
                 {
-                    ShowMessage($"Conversion to {selectedFormat} is not supported.");
+                    ShowMessage($"Conversion to {selectedFormat} is not supported");
                 }
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error: {ex.Message}");
+                ShowMessage($"Error during conversion: {ex.Message}");
             }
         }
 
@@ -232,29 +244,27 @@ namespace AlkalineGTK
             {
                 if (_api == null)
                 {
-                    Console.WriteLine("API is null. Asking for API key.");
-                    ShowMessage("API key not set. Please set the API key.");
+                    ShowMessage("API is null, asking for API key");
                     AskForApiKey();
                     return;
                 }
 
-                Console.WriteLine("Loading supported formats...");
-                ShowMessage("Loading supported formats...");
+                ShowMessage("Getting supported formats from API");
                 var supportedFormats = await _api.GetSupportedFormatsAsync(inputFile);
                 
                 if (supportedFormats == null)
                 {
-                    Console.WriteLine("Supported formats is null");
-                    ShowMessage("Failed to retrieve supported formats.");
+                    ShowMessage("Supported formats is null");
                     return;
                 }
 
-                Console.WriteLine($"Supported formats: {string.Join(", ", supportedFormats)}");
+                ShowMessage($"Supported formats: {string.Join(", ", supportedFormats)}");
 
                 Application.Invoke((sender, args) =>
                 {
                     try
                     {
+                        ShowMessage("Updating format dropdown");
                         _formatDropdown.RemoveAll();
                         _formatDropdown.AppendText("Select format");
                         foreach (var format in supportedFormats)
@@ -265,45 +275,41 @@ namespace AlkalineGTK
                             }
                             else
                             {
-                                Console.WriteLine("Skipping empty or null format");
+                                ShowMessage("Skipping empty or null format");
                             }
                         }
                         _formatDropdown.Active = 0;
+                        ShowMessage("Format dropdown updated");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error updating format dropdown: {ex}");
+                        ShowMessage($"Error updating format dropdown: {ex.Message}");
                     }
                 });
-
-                ShowMessage("Supported formats loaded.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in LoadSupportedFormats: {ex}");
-                ShowMessage($"Failed to load supported formats. Error: {ex.Message}");
+                ShowMessage($"Error in LoadSupportedFormats: {ex.Message}");
             }
+        }
+
+        private void Log(string message)
+        {
+            Program.Log($"MainWindow: {message}");
         }
 
         private void ShowMessage(string message)
         {
-            Console.WriteLine($"Status message: {message}");
+            Log($"Status: {message}");
             Application.Invoke((sender, args) =>
             {
-                try
+                if (_statusLabel != null)
                 {
-                    if (_statusLabel != null)
-                    {
-                        _statusLabel.Text = message;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Error: _statusLabel is null");
-                    }
+                    _statusLabel.Text = message;
                 }
-                catch (Exception ex)
+                else
                 {
-                    Console.WriteLine($"Error updating status label: {ex.Message}");
+                    Log("Error: _statusLabel is null");
                 }
             });
         }
