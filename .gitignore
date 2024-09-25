@@ -2,6 +2,7 @@
 /bin/
 /obj/
 /AlkalineGTK.AppDir/
+/Batteries/
 /appimagetool*
 
 # Ignore all files and subdirectories in bin, obj, AlkalineGTK.AppDir, and appimagetool

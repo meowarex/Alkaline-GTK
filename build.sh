@@ -131,15 +131,6 @@ echo "Creating AppImage..."
 ./Batteries/appimagetool-x86_64.AppImage AlkalineGTK.AppDir AlkalineGTK.AppImage
 
 echo -e "${GREEN}AppImage created successfully!${NC}"
-
-# Prompt to execute the AppImage
-read -p "Do you want to execute the AppImage now? (y/n) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]
-then
-    ./AlkalineGTK.AppImage
-else
-    echo -e "${GREEN}You can find the AppImage at: $(pwd)/AlkalineGTK.AppImage${NC}"
-fi
+echo -e "${GREEN}You can find the AppImage at: $(pwd)/AlkalineGTK.AppImage${NC}"
 
 echo -e "${GREEN}Installation process completed.${NC}"
