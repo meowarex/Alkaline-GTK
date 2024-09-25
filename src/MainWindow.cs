@@ -11,6 +11,7 @@ namespace AlkalineGTK
         private ComboBoxText _formatDropdown;
         private Button _convertButton;
         private Entry _outputDirectory;
+        private CloudConvertApi _api;
 
         public MainWindow() : base("AlkalineGTK - File Converter")
         {
@@ -18,15 +19,27 @@ namespace AlkalineGTK
             SetPosition(WindowPosition.Center);
             DeleteEvent += OnDeleteEvent;
 
+            InitializeComponents();
+            ShowAll();
+
+            // Ask for API key on startup
+            GLib.Idle.Add(() =>
+            {
+                AskForApiKey();
+                return false;
+            });
+        }
+
+        private void InitializeComponents()
+        {
+            // File chooser
+            _fileChooser = new FileChooserButton("Select a file", FileChooserAction.Open);
+            _fileChooser.FileSet += OnFileSelected;
             var vbox = new VBox(false, 10)
             {
                 BorderWidth = 10
             };
             Add(vbox);
-
-            // File chooser
-            _fileChooser = new FileChooserButton("Select a file", FileChooserAction.Open);
-            _fileChooser.FileSet += OnFileSelected;
             vbox.PackStart(_fileChooser, false, false, 5);
 
             // Output directory chooser
@@ -50,8 +63,62 @@ namespace AlkalineGTK
             _convertButton = new Button("Convert");
             _convertButton.Clicked += OnConvertClicked;
             vbox.PackStart(_convertButton, false, false, 5);
+        }
 
-            ShowAll();
+        private void AskForApiKey()
+        {
+            var dialog = new Dialog("Enter API Key", this, DialogFlags.Modal)
+            {
+                BorderWidth = 10
+            };
+
+            var content = dialog.ContentArea;
+            var label = new Label("Please enter your CloudConvert API key:");
+            content.Add(label);
+
+            var entry = new Entry
+            {
+                WidthRequest = 300,
+                Visibility = false
+            };
+            content.Add(entry);
+
+            dialog.AddButton("OK", ResponseType.Ok);
+            dialog.AddButton("Cancel", ResponseType.Cancel);
+
+            dialog.Response += (sender, e) =>
+            {
+                if (e.ResponseId == ResponseType.Ok)
+                {
+                    string apiKey = entry.Text;
+                    if (!string.IsNullOrWhiteSpace(apiKey))
+                    {
+                        Environment.SetEnvironmentVariable("CLOUDCONVERT_API_TOKEN", apiKey);
+                        try
+                        {
+                            _api = new CloudConvertApi();
+                            ShowMessage("API key set successfully!");
+                        }
+                        catch (Exception ex)
+                        {
+                            ShowMessage($"Error setting API key: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        ShowMessage("API key cannot be empty. Please try again.");
+                        AskForApiKey(); // Ask again if the key is empty
+                    }
+                }
+                else
+                {
+                    ShowMessage("API key is required to use the application. The app will now close.");
+                    Application.Quit();
+                }
+                dialog.Destroy();
+            };
+
+            dialog.ShowAll();
         }
 
         private void OnDeleteEvent(object sender, DeleteEventArgs args)
@@ -106,15 +173,20 @@ namespace AlkalineGTK
 
             try
             {
-                var api = new CloudConvertApi();
-                var supportedFormats = await api.GetSupportedFormatsAsync(inputFile);
+                if (_api == null)
+                {
+                    ShowMessage("API key not set. Please restart the application.");
+                    return;
+                }
+
+                var supportedFormats = await _api.GetSupportedFormatsAsync(inputFile);
 
                 if (supportedFormats.Contains(selectedFormat, StringComparer.OrdinalIgnoreCase))
                 {
                     // Implement the actual conversion logic here
                     // For demonstration, we'll initiate a conversion job with CloudConvert
                     string newFilePath = System.IO.Path.Combine(outputDir, $"{System.IO.Path.GetFileNameWithoutExtension(inputFile)}.{selectedFormat}");
-                    bool success = await api.ConvertFileAsync(inputFile, newFilePath, selectedFormat);
+                    bool success = await _api.ConvertFileAsync(inputFile, newFilePath, selectedFormat);
 
                     if (success)
                     {
@@ -140,8 +212,13 @@ namespace AlkalineGTK
         {
             try
             {
-                var api = new CloudConvertApi();
-                var supportedFormats = await api.GetSupportedFormatsAsync(inputFile);
+                if (_api == null)
+                {
+                    ShowMessage("API key not set. Please restart the application.");
+                    return;
+                }
+
+                var supportedFormats = await _api.GetSupportedFormatsAsync(inputFile);
 
                 _formatDropdown.RemoveAll();
                 _formatDropdown.AppendText("Select format");

@@ -9,13 +9,14 @@ namespace AlkalineGTK.Utils
     public class CloudConvertApi
     {
         private readonly string _apiUrl = "https://api.cloudconvert.com/v2"; // CloudConvert API base URL
-        private readonly string _apiToken = Environment.GetEnvironmentVariable("CLOUDCONVERT_API_TOKEN") ?? "YOUR_CLOUDCONVERT_API_TOKEN"; // Securely retrieve your API token
+        private readonly string _apiToken = Environment.GetEnvironmentVariable("CLOUDCONVERT_API_TOKEN"); // Securely retrieve your API token
 
         public CloudConvertApi()
         {
-            if (_apiToken == "YOUR_CLOUDCONVERT_API_TOKEN")
+            _apiToken = Environment.GetEnvironmentVariable("CLOUDCONVERT_API_TOKEN");
+            if (string.IsNullOrEmpty(_apiToken))
             {
-                throw new InvalidOperationException("Please set the CLOUDCONVERT_API_TOKEN environment variable with your CloudConvert API token.");
+                throw new InvalidOperationException("CloudConvert API token is not set.");
             }
         }
 
@@ -97,7 +98,7 @@ namespace AlkalineGTK.Utils
 
             // Upload the file
             var uploadClient = new RestClient(uploadUrl);
-            var uploadRequest = new RestRequest(Method.Post);
+            var uploadRequest = new RestRequest(uploadUrl, Method.Post);
             foreach (var file in System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(inputFilePath)))
             {
                 uploadRequest.AddFile("file", inputFilePath);

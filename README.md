@@ -15,7 +15,7 @@ AlkalineGTK is a cross-platform desktop application built with GTK# that allows 
 
 ## Prerequisites
 
-- .NET 9.0 SDK
+- Latest .NET SDK (targeting .NET 9 when available)
 - GTK# 4.6.5 or later
 - CloudConvert API key
 
@@ -23,7 +23,7 @@ AlkalineGTK is a cross-platform desktop application built with GTK# that allows 
 
 1. Clone the repository:
    ```
-   git clone https://github.com/A-T-O-M-I-X/Alkaline-GTK
+   git clone https://github.com/yourusername/AlkalineGTK.git
    cd AlkalineGTK
    ```
 
@@ -69,3 +69,26 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [CloudConvert](https://cloudconvert.com/) for providing the file conversion API
 - [GTK#](https://github.com/GtkSharp/GtkSharp) for the cross-platform GUI framework
+
+## Installation on Linux
+
+For Linux users, we provide a script that sets up the necessary dependencies and optionally builds the application. This script supports various Linux distributions, including Debian-based, Red Hat-based, Arch Linux, and openSUSE.
+
+1. Open a terminal in the project root directory.
+2. Make the scripts executable:
+   ```
+   chmod +x batteries.sh build.sh
+   ```
+3. Run the installation script:
+   ```
+   ./batteries.sh
+   ```
+
+This script will detect your distribution, install .NET SDK, GTK#, and other required dependencies using the appropriate package manager. It will then prompt you if you want to build the application as an AppImage.
+
+If you choose to build the application later, you can do so by running:
+```
+./build.sh
+```
+
+This will create an AppImage of AlkalineGTK in your project directory.
