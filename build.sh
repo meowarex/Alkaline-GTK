@@ -67,6 +67,14 @@ echo "Building the project..."
 # Build the project with warnings suppressed
 dotnet publish -c Release -r linux-x64 --self-contained true /p:WarningLevel=0
 
+# Check if the executable exists
+if [ ! -f bin/Release/net8.0/linux-x64/publish/AlkalineGTK ]; then
+    echo -e "${RED}AlkalineGTK executable not found after publish!${NC}"
+    exit 1
+else
+    echo -e "${GREEN}AlkalineGTK executable found.${NC}"
+fi
+
 # Navigate back to the root directory
 cd ..
 
@@ -92,26 +100,10 @@ mkdir -p AlkalineGTK.AppDir/usr/bin
 mkdir -p AlkalineGTK.AppDir/usr/share/applications
 mkdir -p AlkalineGTK.AppDir/usr/share/icons/hicolor/256x256/apps
 
-echo "Copying files to AppDir..."
+echo "Copying executable to AppDir/usr/bin/"
 
-# Debug: List the contents of the publish directory
-echo "Contents of src/bin/Release/net8.0/linux-x64/publish/:"
-ls -l src/bin/Release/net8.0/linux-x64/publish/
-
-# Ensure the AlkalineGTK executable exists and is executable
-if [ ! -f src/bin/Release/net8.0/linux-x64/publish/AlkalineGTK ]; then
-    echo -e "${RED}AlkalineGTK executable not found!${NC}"
-    exit 1
-fi
-
-if [ ! -x src/bin/Release/net8.0/linux-x64/publish/AlkalineGTK ]; then
-    echo -e "${RED}AlkalineGTK executable is not executable!${NC}"
-    chmod +x src/bin/Release/net8.0/linux-x64/publish/AlkalineGTK
-    echo -e "${GREEN}AlkalineGTK executable permissions fixed.${NC}"
-fi
-
-# Copy files to AppDir
-cp -r src/bin/Release/net8.0/linux-x64/publish/* AlkalineGTK.AppDir/usr/bin/
+# Copy the executable specifically
+cp src/bin/Release/net8.0/linux-x64/publish/AlkalineGTK AlkalineGTK.AppDir/usr/bin/
 
 # Debug: List the contents of the usr/bin directory
 echo "Contents of AlkalineGTK.AppDir/usr/bin/:"
@@ -137,13 +129,25 @@ echo "Creating AppRun file..."
 # Create AppRun file
 cat > AlkalineGTK.AppDir/AppRun << EOL
 #!/bin/bash
-HERE="$(dirname "$(readlink -f "${0}")")"
-export PATH="${HERE}/usr/bin/:${PATH}"
-export LD_LIBRARY_PATH="${HERE}/usr/lib/:${LD_LIBRARY_PATH}"
-exec "${HERE}/usr/bin/AlkalineGTK" "$@"
+HERE="\$(dirname "\$(readlink -f "\${0}")")"
+export PATH="\${HERE}/usr/bin/:\${PATH}"
+export LD_LIBRARY_PATH="\${HERE}/usr/lib/:\${LD_LIBRARY_PATH}"
+
+# Check if the executable exists in the expected location
+if [ -f "\${HERE}/usr/bin/AlkalineGTK" ]; then
+    exec "\${HERE}/usr/bin/AlkalineGTK" "\$@"
+else
+    echo "Error: AlkalineGTK executable not found in \${HERE}/usr/bin/"
+    echo "Contents of \${HERE}/usr/bin/:"
+    ls -l "\${HERE}/usr/bin/"
+    exit 1
+fi
 EOL
 
 chmod +x AlkalineGTK.AppDir/AppRun
+
+echo "Contents of AppRun:"
+cat AlkalineGTK.AppDir/AppRun
 
 echo "Copying icon file..."
 
@@ -161,6 +165,14 @@ echo "Verifying AppDir structure..."
 
 # List the contents of the AppDir structure for debugging
 ls -R AlkalineGTK.AppDir
+
+# Verify the executable is in the correct location
+if [ -f AlkalineGTK.AppDir/usr/bin/AlkalineGTK ]; then
+    echo -e "${GREEN}AlkalineGTK executable found in AppDir.${NC}"
+else
+    echo -e "${RED}AlkalineGTK executable not found in AppDir!${NC}"
+    exit 1
+fi
 
 echo "Deleting old AppImage files..."
 
