@@ -105,7 +105,11 @@ esac
 # Verify installation
 dotnet --version
 
-echo "Installation completed successfully!"
+echo "${GREEN}Batteries Included successfully!${NC}"
+
+echo -e "\e[3;37mWaiting for 3 seconds...\e[0m"
+sleep 3
+
 
 # Prompt to run build script
 read -p "Do you want to build the application now? (y/n) " -n 1 -r

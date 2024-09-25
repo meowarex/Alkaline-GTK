@@ -71,8 +71,11 @@ echo "Making scripts executable..."
 chmod +x batteries.sh build.sh
 echo -e "${GREEN}${TICK} Scripts are now executable${NC}"
 
+echo -e "${GREEN}Installation process completed.${NC}"
+
+echo -e "\e[3;37mWaiting for 3 seconds...\e[0m"
+sleep 3
+
 # Run batteries.sh
 echo "Running batteries.sh..."
 ./batteries.sh
-
-echo -e "${GREEN}Installation process completed.${NC}"
