@@ -1,7 +1,8 @@
-# AlkalineGTK
+# AlkalineGTK (Linux Only *for now*)
 
-AlkalineGTK is a Linux desktop application built with GTK# that allows users to convert files between different formats using the CloudConvert API.
+AlkalineGTK is a Cross-Platform desktop application built with GTK# that allows users to convert files between different formats using the CloudConvert API.
 
+[Roadmap <3](https://github.com/users/meowarex/projects/2/views/1) - Live Progress Tracker!
 ## Features
 
 - Select input files using a file chooser
