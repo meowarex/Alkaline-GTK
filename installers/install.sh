@@ -26,35 +26,38 @@ mkdir -p "$DIST_DIR"
 
 echo "Starting the installation and build process for $APP_NAME..."
 
-# 1. Install necessary dependencies
+# Function to check network connectivity
+check_network() {
+    echo "Checking network connectivity..."
+    if ! ping -c 3 archlinux.org &> /dev/null; then
+        echo "Error: Unable to reach archlinux.org. Please check your internet connection."
+        exit 1
+    fi
+}
+
+# Call the network check before installing dependencies
+check_network
+
+# 1. Install necessary dependencies using pacman
 
 echo "Installing necessary dependencies..."
 
-# Check if requirements.txt exists
-if [ -f "$PROJECT_ROOT/requirements.txt" ]; then
-    # Install Python dependencies from requirements.txt
-    pip3 install --user --break-system-packages -r "$PROJECT_ROOT/requirements.txt"
-else
-    echo "requirements.txt not found. Installing dependencies directly."
-    # Install Python dependencies directly
-    pip3 install --user --break-system-packages PyGObject requests
-fi
-
-# Function to detect package manager
-detect_package_manager() {
-    if command -v apt-get &> /dev/null; then
-        PKG_MANAGER="apt-get"
-    elif command -v dnf &> /dev/null; then
-        PKG_MANAGER="dnf"
-    elif command -v pacman &> /dev/null; then
-        PKG_MANAGER="pacman"
-    elif command -v zypper &> /dev/null; then
-        PKG_MANAGER="zypper"
-    else
-        echo "Could not detect package manager."
-        PKG_MANAGER="unknown"
+# Function to check if running as root
+check_root() {
+    if [ "$(id -u)" != "0" ]; then
+        echo "This script must be run as root" 1>&2
+        exit 1
     fi
 }
+
+# Check if running as root
+check_root
+
+# Update package database
+pacman -Sy
+
+# Install Python and required packages
+pacman -S --noconfirm python python-gobject python-requests
 
 # Function to check if a command exists and install if missing
 check_and_install() {
@@ -67,34 +70,8 @@ check_and_install() {
                     echo "Skipping $1 installation."
                     ;;
                 * )
-                    if [ "$(id -u )" -ne 0 ]; then
-                        SUDO='sudo'
-                    fi
-                    detect_package_manager
-                    if [ "$PKG_MANAGER" == "unknown" ]; then
-                        echo "Please install $1 manually."
-                        exit 1
-                    fi
-                    echo "Installing $1 using $PKG_MANAGER..."
-                    case "$PKG_MANAGER" in
-                        apt-get)
-                            $SUDO apt-get update
-                            $SUDO apt-get install -y flatpak-builder
-                            ;;
-                        dnf)
-                            $SUDO dnf install -y flatpak-builder
-                            ;;
-                        pacman)
-                            $SUDO pacman -Sy --needed flatpak-builder
-                            ;;
-                        zypper)
-                            $SUDO zypper install -y flatpak-builder
-                            ;;
-                        *)
-                            echo "Package manager $PKG_MANAGER is not supported by this script."
-                            exit 1
-                            ;;
-                    esac
+                    echo "Installing $1 using pacman..."
+                    pacman -S --noconfirm flatpak-builder
                     ;;
             esac
         else
@@ -104,13 +81,10 @@ check_and_install() {
                     echo "Skipping $1 installation."
                     ;;
                 * )
-                    if [ "$(id -u )" -ne 0 ]; then
-                        SUDO='sudo'
-                    fi
                     echo "Installing $1..."
                     wget -O "$1" "$2"
                     chmod +x "$1"
-                    $SUDO mv "$1" /usr/local/bin/
+                    mv "$1" /usr/local/bin/
                     ;;
             esac
         fi
@@ -167,14 +141,17 @@ if [ ! -f "$FLATPAK_YAML" ]; then
 fi
 
 # Clean previous build
-rm -rf "$BUILD_DIR" repo
+sudo rm -rf "$BUILD_DIR" repo
 
 # Build and install locally for testing
-flatpak-builder --user --install --force-clean "$BUILD_DIR" "$FLATPAK_YAML"
+sudo flatpak-builder --user --install --force-clean "$BUILD_DIR" "$FLATPAK_YAML"
 
 # Build the Flatpak package
-flatpak-builder --repo=repo --force-clean "$BUILD_DIR" "$FLATPAK_YAML"
-flatpak build-bundle repo "$DIST_DIR/alkaline.flatpak" "$APP_ID"
+sudo flatpak-builder --repo=repo --force-clean "$BUILD_DIR" "$FLATPAK_YAML"
+sudo flatpak build-bundle repo "$DIST_DIR/alkaline.flatpak" "$APP_ID"
+
+# Change ownership of the built files back to the current user
+sudo chown -R $(id -u):$(id -g) "$BUILD_DIR" repo "$DIST_DIR/alkaline.flatpak"
 
 # 3. Build the AppImage package
 
@@ -192,9 +169,6 @@ mkdir -p "$PROJECT_ROOT/$APP_NAME.AppDir/usr/share/applications"
 cp "$PROJECT_ROOT/src/"*.py "$PROJECT_ROOT/$APP_NAME.AppDir/usr/bin/"
 cp "$PROJECT_ROOT/assets/icons/alkaline.png" "$PROJECT_ROOT/$APP_NAME.AppDir/usr/share/icons/hicolor/48x48/apps/$APP_ID.png"
 cp "$PROJECT_ROOT/data/$APP_ID.desktop" "$PROJECT_ROOT/$APP_NAME.AppDir/usr/share/applications/"
-
-# Install Python dependencies into AppDir
-python3 -m pip install -r "$PROJECT_ROOT/requirements.txt" --target="$PROJECT_ROOT/$APP_NAME.AppDir/usr/bin/"
 
 # Create AppRun script
 cat > "$PROJECT_ROOT/$APP_NAME.AppDir/AppRun" <<EOL
